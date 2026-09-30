@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="ProAct: World-Calibrated Proposal-to-Action Flow for Vision-Language-Action Models."
+    />
+    <title>ProAct | Proposal-to-Action Flow for VLAs</title>
+    <link rel="icon" href="static/images/proact-mark.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="static/css/style.css" />
+  </head>
+  <body>
+    <header class="site-nav">
+      <div class="nav-inner">
+        <a class="nav-brand" href="#top">
+          <img src="static/images/proact-logo.png" alt="ProAct logo" />
+        </a>
+        <nav class="nav-links" aria-label="Primary navigation">
+          <a href="#overview">Overview</a>
+          <a href="#method">Method</a>
+          <a href="#results">Results</a>
+          <a href="#analysis">Analysis</a>
+          <a href="#videos">Demos</a>
+          <a href="#citation">Citation</a>
+        </nav>
+        <div class="nav-actions">
+          <a href="https://arxiv.org/abs/2609.11875">Paper ↗</a>
+          <a href="https://github.com/JiuTian-VL/ProAct">Code ↗</a>
+        </div>
+      </div>
+    </header>
+    <main>
+      <section class="hero section-shell" id="top">
+        <div class="eyebrow">Vision-Language-Action · Research Project</div>
+        <img class="hero-logo" src="static/images/proact-logo.png" alt="ProAct logo" />
+        <h1>World-Calibrated<br /><span>Proposal-to-Action Flow</span></h1>
+        <p class="hero-subtitle">
+          ProAct turns recent robot motion into a scene-aware proposal, calibrates it
+          with prospective world reasoning, and refines it into executable actions.
+        </p>
+
+        <div class="authors">
+          <a href="https://minijie3.github.io/">Jie He</a><sup>1,*</sup>,
+          <a href="https://liwei-2013.github.io/">Wei Li</a><sup>1,*</sup>,
+          Junwen Tong<sup>2,*</sup>,
+          <a href="https://rshaojimmy.github.io/OrionLab/">Rui Shao</a><sup>1,†</sup>,
+          Wei-Shi Zheng<sup>3</sup>, Liqiang Nie<sup>1</sup>
+        </div>
+        <p class="affiliations">
+          <sup>1</sup>Harbin Institute of Technology, Shenzhen
+          <span>·</span> <sup>2</sup>ZTE Corporation
+          <span>·</span> <sup>3</sup>Sun Yat-sen University<br />
+          <sup>*</sup>Equal contribution <span>·</span> <sup>†</sup>Corresponding author
+        </p>
+
+        <div class="action-row">
+          <a class="button primary" href="https://arxiv.org/abs/2609.11875">↗ Paper</a>
+          <a class="button" href="https://github.com/JiuTian-VL/ProAct">◈ Code</a>
+          <a class="button" href="#videos">▶ Demos</a>
+        </div>
+      </section>
+
+      <section class="section-shell intro-section" id="overview">
+        <div class="section-label">01 / Overview</div>
+        <div class="intro-copy">
+          <h2>Start from motion.<br /><em>Reason about the world.</em></h2>
+          <p>
+            Flow-based VLA policies typically start every action chunk from an
+            uninformed isotropic Gaussian. ProAct changes the starting point itself:
+            recent executed motion becomes a soft local hypothesis, while a
+            proposal-aware World Expert decides how that hypothesis should be
+            centered, scaled, and shaped for the current scene.
+          </p>
+        </div>
+        <div class="text-columns">
+          <p>
+            Robot manipulation is locally continuous even when task-level behavior
+            is multimodal. The most recent executed actions therefore contain
+            useful information about the direction and scale of the next motion.
+            However, simply extrapolating this motion is unreliable near contact,
+            reorientation, gripper actuation, and task-phase transitions.
+          </p>
+          <p>
+            ProAct treats motion continuity as a proposal rather than a commitment.
+            It evaluates the proposal against a task-consistent future, then uses
+            that compatibility to shape the source from which the final action
+            trajectory is generated.
+          </p>
+        </div>
+        <figure class="wide-figure">
+          <img src="static/images/motivation.png" alt="ProAct motivation" loading="lazy" />
+          <figcaption>Recent motion provides continuity; world reasoning provides correction.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section-shell method-section" id="method">
+        <div class="section-label">02 / Method</div>
+        <div class="method-heading">
+          <h2>Propose <span>→</span> Calibrate <span>→</span> Refine</h2>
+          <p>
+            The three experts preserve the flexibility of flow matching while
+            making its source distribution predictive and world-aware.
+          </p>
+        </div>
+        <div class="method-intro">
+          <p>
+            Given the current visual-language context and a history of executed
+            actions, ProAct factorizes action generation into three connected
+            stages. Each stage has a distinct role: estimate a plausible motion,
+            understand whether it is compatible with the scene, and finally
+            produce the executable action chunk.
+          </p>
+          <p>
+            The calibrated source is proposal-centered and anisotropic. Its
+            refinement extent controls how far the policy can depart from recent
+            motion, while its low-rank geometry allocates correction along coupled
+            translation, rotation, and gripper directions.
+          </p>
+        </div>
+        <figure class="wide-figure framework-figure">
+          <img src="static/images/framework.png" alt="ProAct framework" loading="lazy" />
+          <figcaption>
+            ProAct connects local motion continuity with future-aware visual reasoning
+            before the final flow-matching refinement.
+          </figcaption>
+        </figure>
+        <div class="method-grid">
+          <article>
+            <span class="step-number">01</span>
+            <h3>Proposal Expert</h3>
+            <p>
+              Maintains an exponentially smoothed motion estimate, extrapolates it
+              over the action horizon, and grounds the proposal in VLM features
+              with a shallow endpoint flow step.
+            </p>
+          </article>
+          <article>
+            <span class="step-number">02</span>
+            <h3>World Expert</h3>
+            <p>
+              Uses the proposal as a soft motion prior while predicting the
+              task-consistent future latent with a frozen V-JEPA 2 target and
+              estimating proposal-specific calibration parameters.
+            </p>
+          </article>
+          <article>
+            <span class="step-number">03</span>
+            <h3>Action Expert</h3>
+            <p>
+              Samples from the calibrated anisotropic source and performs the
+              final flow-matching transport, retaining the base VLA's ability to
+              correct an imperfect proposal.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section-shell results-section" id="results">
+        <div class="section-label">03 / Results</div>
+        <div class="results-heading">
+          <h2>More capable.<br /><em>Less denoising.</em></h2>
+          <p>
+            ProAct is evaluated across simulation and real-world manipulation
+            tasks. The proposal-centered source improves both task performance
+            and inference efficiency compared with the isotropic baseline.
+          </p>
+        </div>
+        <p class="results-copy">
+          On simulated benchmarks, ProAct reaches 98.4% average success on LIBERO,
+          86.8% on LIBERO-Plus, and 60.3% on the randomized hard subset of RoboTwin
+          2.0. On physical robots, it achieves strong task and cumulative success
+          rates across GALAXEA R1 Lite and AgileX Cobot Magic. The efficiency gains
+          come from starting flow refinement closer to the relevant action manifold,
+          allowing the model to use half as many denoising steps as π<sub>0.5</sub>.
+        </p>
+        <div class="metric-grid">
+          <div class="metric"><strong>98.4%</strong><span>LIBERO average</span></div>
+          <div class="metric"><strong>86.8%</strong><span>LIBERO-Plus average</span></div>
+          <div class="metric"><strong>60.3%</strong><span>RoboTwin randomized</span></div>
+          <div class="metric accent"><strong>50%</strong><span>fewer denoising steps</span></div>
+          <div class="metric accent"><strong>25.8%</strong><span>lower latency</span></div>
+          <div class="metric accent"><strong>34.8%</strong><span>higher throughput</span></div>
+        </div>
+        <div class="platform-row">
+          <div><span>GALAXEA R1 Lite</span><strong>78.7% TSR · 86.1% CSR</strong></div>
+          <div><span>AgileX Cobot Magic</span><strong>74.7% TSR · 82.3% CSR</strong></div>
+        </div>
+        <div class="benchmark-block">
+          <div class="benchmark-heading">
+            <h3>Simulation benchmarks</h3>
+            <p>Average performance against representative vision-language-action baselines.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Method</th><th>Spatial</th><th>Object</th><th>Goal</th><th>Long</th><th>LIBERO Avg. ↑</th>
+                  <th>Camera</th><th>Robot</th><th>Language</th><th>Light</th><th>Background</th><th>Noise</th><th>Layout</th><th>LIBERO-Plus ↑</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>OpenVLA-OFT</td><td>97.6</td><td>98.4</td><td>97.9</td><td>94.5</td><td>97.1</td><td>56.4</td><td>31.9</td><td>79.5</td><td>88.7</td><td>93.3</td><td>75.8</td><td>74.2</td><td>69.6</td></tr>
+                <tr><td>π<sub>0.5</sub></td><td>98.8</td><td>98.2</td><td>98.0</td><td>92.4</td><td>96.9</td><td>59.7</td><td>65.5</td><td>75.3</td><td>87.0</td><td>82.4</td><td>72.1</td><td>80.3</td><td>73.6</td></tr>
+                <tr><td>WorldVLA</td><td>87.6</td><td>96.2</td><td>83.4</td><td>60.0</td><td>81.8</td><td>0.1</td><td>27.9</td><td>41.6</td><td>43.7</td><td>17.1</td><td>10.9</td><td>38.0</td><td>25.0</td></tr>
+                <tr><td>UniVLA</td><td>95.4</td><td>98.8</td><td>93.6</td><td>94.0</td><td>95.4</td><td>1.8</td><td>46.2</td><td>69.6</td><td>69.0</td><td>81.0</td><td>21.2</td><td>31.9</td><td>42.9</td></tr>
+                <tr><td>VLA-Adapter</td><td>97.8</td><td>99.2</td><td>97.2</td><td>95.0</td><td>97.3</td><td>36.2</td><td>37.9</td><td>74.6</td><td>70.6</td><td>76.1</td><td>58.0</td><td>69.7</td><td>59.1</td></tr>
+                <tr><td>DreamVLA</td><td>97.5</td><td>94.0</td><td>89.5</td><td>89.5</td><td>92.6</td><td>65.0</td><td>40.8</td><td>63.5</td><td>85.7</td><td>82.6</td><td>84.9</td><td>74.0</td><td>69.9</td></tr>
+                <tr><td>VLA-JEPA</td><td>96.2</td><td>99.6</td><td>97.2</td><td>95.8</td><td>97.2</td><td>63.3</td><td>67.1</td><td>85.4</td><td>95.6</td><td>93.6</td><td>66.3</td><td>85.1</td><td>79.5</td></tr>
+                <tr><td>Fast-WAM</td><td>98.2</td><td>100.0</td><td>98.2</td><td>95.2</td><td>97.6</td><td>34.0</td><td>55.1</td><td>88.9</td><td>90.0</td><td>44.9</td><td>33.3</td><td>73.4</td><td>59.0</td></tr>
+                <tr><td>HoloBrain</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>66.3</td><td>49.0</td><td>65.9</td><td>94.9</td><td>93.3</td><td>73.1</td><td>78.2</td><td>72.6</td></tr>
+                <tr class="ours"><td>ProAct</td><td>99.4</td><td>99.6</td><td>98.4</td><td>96.0</td><td>98.4</td><td>76.1</td><td>80.3</td><td>87.4</td><td>97.8</td><td>95.5</td><td>90.2</td><td>86.2</td><td>86.8</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="benchmark-block">
+          <div class="benchmark-heading">
+            <h3>RoboTwin 2.0 · randomized hard</h3>
+            <p>Zero-shot randomized evaluation with 100 rollouts per task.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="results-table compact-table">
+              <thead>
+                <tr><th>Method</th><th>Put Bottles</th><th>Dual Shoes</th><th>Diverse Bottles</th><th>Burger Fries</th><th>Open Laptop</th><th>Blocks RGB</th><th>Dual Bottles</th><th>Dump Bin</th><th>Stamp Seal</th><th>Bread Basket</th><th>Avg. ↑</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>π<sub>0</sub></td><td>13</td><td>0</td><td>6</td><td>4</td><td>46</td><td>5</td><td>12</td><td>24</td><td>4</td><td>4</td><td>11.8</td></tr>
+                <tr><td>π<sub>0.5</sub></td><td>9</td><td>7</td><td>3</td><td>70</td><td>35</td><td>35</td><td>6</td><td>42</td><td>23</td><td>56</td><td>28.6</td></tr>
+                <tr><td>Spatial Forcing</td><td>41</td><td>2</td><td>38</td><td>71</td><td>15</td><td>7</td><td>47</td><td>70</td><td>2</td><td>53</td><td>34.6</td></tr>
+                <tr><td>X-WAM</td><td>21</td><td>7</td><td>26</td><td>36</td><td>6</td><td>36</td><td>55</td><td>40</td><td>16</td><td>40</td><td>28.3</td></tr>
+                <tr><td>X-VLA</td><td>20</td><td>12</td><td>30</td><td>35</td><td>16</td><td>4</td><td>51</td><td>41</td><td>2</td><td>52</td><td>26.3</td></tr>
+                <tr><td>Abot-M0</td><td>26</td><td>15</td><td>7</td><td>55</td><td>64</td><td>23</td><td>19</td><td>68</td><td>19</td><td>47</td><td>34.3</td></tr>
+                <tr><td>EventVLA</td><td>31</td><td>1</td><td>9</td><td>7</td><td>23</td><td>6</td><td>8</td><td>64</td><td>3</td><td>15</td><td>16.7</td></tr>
+                <tr><td>Xiaomi Robotics-0</td><td>21</td><td>9</td><td>12</td><td>27</td><td>24</td><td>8</td><td>28</td><td>49</td><td>3</td><td>23</td><td>20.4</td></tr>
+                <tr><td>FastWAM</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0.1</td></tr>
+                <tr><td>GalaxeaVLA</td><td>3</td><td>9</td><td>11</td><td>32</td><td>13</td><td>1</td><td>21</td><td>40</td><td>2</td><td>32</td><td>16.4</td></tr>
+                <tr><td>AHA-WAM</td><td>1</td><td>0</td><td>0</td><td>0</td><td>9</td><td>1</td><td>1</td><td>27</td><td>0</td><td>3</td><td>4.2</td></tr>
+                <tr><td>DP3</td><td>21</td><td>0</td><td>1</td><td>18</td><td>7</td><td>0</td><td>1</td><td>53</td><td>0</td><td>1</td><td>10.2</td></tr>
+                <tr><td>starVLA</td><td>0</td><td>2</td><td>15</td><td>11</td><td>2</td><td>2</td><td>20</td><td>4</td><td>0</td><td>5</td><td>6.1</td></tr>
+                <tr class="ours"><td>ProAct</td><td>69</td><td>39</td><td>57</td><td>84</td><td>76</td><td>46</td><td>63</td><td>78</td><td>29</td><td>62</td><td>60.3</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="benchmark-block">
+          <div class="benchmark-heading">
+            <h3>Real-world manipulation</h3>
+            <p>Average Task Success Rate (TSR) and Cumulative Success Rate (CSR) over six tasks.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr><th>Method</th><th>GALAXEA TSR ↑</th><th>GALAXEA CSR ↑</th><th>AgileX TSR ↑</th><th>AgileX CSR ↑</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>OpenVLA-OFT</td><td>42.7</td><td>55.6</td><td>37.1</td><td>55.2</td></tr>
+                <tr><td>π<sub>0</sub></td><td>50.7</td><td>62.2</td><td>50.0</td><td>62.0</td></tr>
+                <tr><td>π<sub>0.5</sub></td><td>64.7</td><td>74.0</td><td>62.3</td><td>74.9</td></tr>
+                <tr class="ours"><td>ProAct</td><td>78.7</td><td>86.1</td><td>74.7</td><td>82.3</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-shell analysis-section" id="analysis">
+        <div class="section-label">04 / Analysis</div>
+        <div class="analysis-heading">
+          <h2>What makes<br /><em>ProAct work?</em></h2>
+          <p>
+            We examine whether the learned proposals and calibrations are
+            interpretable, and how proposal-centered transport improves action
+            generation across simulated and real-world tasks.
+          </p>
+        </div>
+        <div class="analysis-list">
+          <article class="analysis-item">
+            <div class="analysis-item-copy">
+              <span class="analysis-index">01</span>
+              <h3>Visual attention of the Proposal Expert</h3>
+              <p>
+                Attention maps on LIBERO (top) and RoboTwin 2.0 (bottom). Warmer
+                colors highlight manipulated objects, interaction regions, and
+                receptacles, showing that the Proposal Expert remains focused on
+                task-relevant scene cues.
+              </p>
+            </div>
+            <img src="static/images/world-prediction-primary.png" alt="Visual attention maps of the Proposal Expert on LIBERO and RoboTwin 2.0" loading="lazy" />
+          </article>
+          <article class="analysis-item">
+            <div class="analysis-item-copy">
+              <span class="analysis-index">02</span>
+              <h3>Calibrated source correlation</h3>
+              <p>
+                Action samples and correlation ellipses visualize the calibrated
+                source geometry. Nearly circular contours indicate weak
+                correlation, while tilted ellipses reveal positive or negative
+                coupling between action dimensions.
+              </p>
+            </div>
+            <img src="static/images/world-prediction-secondary.png" alt="Calibrated source correlation visualization" loading="lazy" />
+          </article>
+          <article class="analysis-item">
+            <div class="analysis-item-copy">
+              <span class="analysis-index">03</span>
+              <h3>World-calibrated proposal refinement</h3>
+              <p>
+                In the left panel, the proposal is refined in 3D translation
+                space. In the right panel, normalized trajectories and calibrated
+                support are shown across seven action dimensions: stable
+                dimensions remain close to the proposal, while incompatible ones
+                bend toward the demonstrated future.
+              </p>
+            </div>
+            <img src="static/images/world-calibration.png" alt="World-calibrated proposal refinement visualization" loading="lazy" />
+          </article>
+          <article class="analysis-item">
+            <div class="analysis-item-copy">
+              <span class="analysis-index">04</span>
+              <h3>Per-checkpoint real-world ablations</h3>
+              <p>
+                Per-checkpoint success is reported across the six GALAXEA R1 Lite
+                tasks. The three panels ablate motion proposal (left), world
+                calibration (middle), and source calibration (right); the full
+                ProAct model obtains the highest bars, especially at later
+                transition and terminal checkpoints.
+              </p>
+            </div>
+            <img src="static/images/real-world-ablation.png" alt="Per-checkpoint real-world ablation visualization" loading="lazy" />
+          </article>
+        </div>
+        <figure class="wide-figure analysis-figure">
+          <img src="static/images/analysis-appendix.png" alt="Additional ProAct analysis visualizations" loading="lazy" />
+          <figcaption>Additional examples of proposal refinement across tasks and execution phases.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section-shell videos-section" id="videos">
+        <div class="section-label">05 / Real-world demonstrations</div>
+        <div class="videos-heading">
+          <h2>From proposal<br /><em>to action.</em></h2>
+          <p>
+            Representative rollouts show ProAct handling object retrieval,
+            articulated drawers, contact-rich wiping, and repeated color-based
+            placement across different task phases.
+          </p>
+        </div>
+        <p class="videos-copy">
+          These tasks deliberately include situations where local continuation is
+          not enough: the robot must re-ground after opening a drawer, switch from
+          grasping to placement, maintain contact during wiping, or preserve object
+          identity over a sequence of placements. The videos illustrate how
+          proposal, calibration, and refinement work together in closed-loop control.
+        </p>
+        <div class="video-grid">
+          <article class="video-card">
+            <div class="video-frame">
+              <video muted loop playsinline preload="metadata" poster="static/images/video-drawer-toy-retrieval.jpg">
+                <source src="static/videos/drawer-toy-retrieval.mp4" type="video/mp4" />
+              </video>
+              <button class="video-play-button" type="button" aria-label="Play Drawer Toy Retrieval video">
+                <span class="play-icon">▶</span><span class="play-label">Play video</span>
+              </button>
+            </div>
+            <h3>Drawer Toy Retrieval</h3>
+          </article>
+          <article class="video-card">
+            <div class="video-frame">
+              <video muted loop playsinline preload="metadata" poster="static/images/video-drawer-manipulation.jpg">
+                <source src="static/videos/drawer-manipulation.mp4" type="video/mp4" />
+              </video>
+              <button class="video-play-button" type="button" aria-label="Play Drawer Manipulation video">
+                <span class="play-icon">▶</span><span class="play-label">Play video</span>
+              </button>
+            </div>
+            <h3>Drawer Manipulation</h3>
+          </article>
+          <article class="video-card">
+            <div class="video-frame">
+              <video muted loop playsinline preload="metadata" poster="static/images/video-table-wiping.jpg">
+                <source src="static/videos/table-wiping.mp4" type="video/mp4" />
+              </video>
+              <button class="video-play-button" type="button" aria-label="Play Table Wiping video">
+                <span class="play-icon">▶</span><span class="play-label">Play video</span>
+              </button>
+            </div>
+            <h3>Table Wiping</h3>
+          </article>
+          <article class="video-card">
+            <div class="video-frame">
+              <video muted loop playsinline preload="metadata" poster="static/images/video-color-sorting.jpg">
+                <source src="static/videos/color-sorting.mp4" type="video/mp4" />
+              </video>
+              <button class="video-play-button" type="button" aria-label="Play Color Sorting video">
+                <span class="play-icon">▶</span><span class="play-label">Play video</span>
+              </button>
+            </div>
+            <h3>Color Sorting</h3>
+          </article>
+          <article class="video-card">
+            <div class="video-frame">
+              <video muted loop playsinline preload="metadata" poster="static/images/video-pot-lid-retrieval.jpg">
+                <source src="static/videos/pot-lid-retrieval.mp4" type="video/mp4" />
+              </video>
+              <button class="video-play-button" type="button" aria-label="Play Pot Lid Retrieval video">
+                <span class="play-icon">▶</span><span class="play-label">Play video</span>
+              </button>
+            </div>
+            <h3>Pot Lid Retrieval</h3>
+          </article>
+          <article class="video-card">
+            <div class="video-frame">
+              <video muted loop playsinline preload="metadata" poster="static/images/video-block-sorting.jpg">
+                <source src="static/videos/block-sorting.mp4" type="video/mp4" />
+              </video>
+              <button class="video-play-button" type="button" aria-label="Play Block Sorting video">
+                <span class="play-icon">▶</span><span class="play-label">Play video</span>
+              </button>
+            </div>
+            <h3>Block Sorting</h3>
+          </article>
+        </div>
+      </section>
+
+      <footer class="section-shell footer" id="citation">
+        <div class="section-label">06 / Citation</div>
+        <div class="footer-title">ProAct</div>
+        <p>
+          World-Calibrated Proposal-to-Action Flow for Vision-Language-Action Models
+        </p>
+        <div class="citation">
+          <pre><code>@article{proact2026,
+  title={World-Calibrated Proposal-to-Action Flow for Vision-Language-Action Models},
+  author={He, Jie and Li, Wei and Tong, Junwen and Shao, Rui and Zheng, Wei-Shi and Nie, Liqiang},
+  journal={arXiv preprint arXiv:2610.xxxxx},
+  year={2026}
+}</code></pre>
+        </div>
+      </footer>
+    </main>
+    <script src="static/js/main.js"></script>
+  </body>
+</html>
