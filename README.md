@@ -9,7 +9,7 @@ The project page for ProAct.
 @article{proact2026,
   title={World-Calibrated Proposal-to-Action Flow for Vision-Language-Action Models},
   author={He, Jie and Li, Wei and Tong, Junwen and Shao, Rui and Zheng, Wei-Shi and Nie, Liqiang},
-  journal={arXiv preprint arXiv:2610.xxxxx},
+  journal={arXiv preprint arXiv:2610.02323},
   year={2026}
 }
 ```
